@@ -13,3 +13,19 @@ configMapGenerator:
   name: envoy-cfg-xds
   options:
     disableNameSuffixHash: true
+
+# Uncomment this to expose this via AWS {A,N}LB target groups
+#
+# components:
+# - ../components/aws
+
+# patches:
+# - patch: |-
+#     - op: replace
+#       path: /spec/targetGroupARN
+#       value: arn:aws:elasticloadbalancing:us-east-1:1234:targetgroup/my-targets/73e2d6bc24d8a067
+#   target:
+#     group: elbv2.k8s.aws
+#     kind: TargetGroupBinding
+#     name: envoy-ingress-tgb
+#     version: v1beta1

@@ -1,0 +1,10 @@
+apiVersion: elbv2.k8s.aws/v1beta1
+kind: TargetGroupBinding
+metadata:
+  name: envoy-ingress-tgb
+spec:
+  serviceRef:
+    name: envoy-ingress
+    port: 8080
+  targetType: ip
+  targetGroupARN: TODO
