@@ -1,0 +1,92 @@
+version_info: "0"
+resources:
+- "@type": type.googleapis.com/envoy.config.cluster.v3.Cluster
+  name: backend
+  type: STRICT_DNS
+  connect_timeout: 10s
+  lb_policy: LEAST_REQUEST
+  typed_extension_protocol_options:
+    # Uncomment to set http protocol options
+    # envoy.extensions.upstreams.http.v3.HttpProtocolOptions:
+    #   "@type": type.googleapis.com/envoy.extensions.upstreams.http.v3.HttpProtocolOptions
+    #   explicit_http_config:
+    #     http2_protocol_options: {}
+  load_assignment:
+    cluster_name: backend
+    endpoints:
+    - lb_endpoints:
+      - endpoint:
+          address:
+            socket_address:
+              address: httpbin.org
+              port_value: 443
+  transport_socket:
+    name: envoy.transport_sockets.tls
+    typed_config:
+      "@type": type.googleapis.com/envoy.extensions.transport_sockets.tls.v3.UpstreamTlsContext
+  health_checks:
+  - interval_jitter: 1s
+    unhealthy_threshold: 6
+    healthy_threshold: 1
+    event_log_path: "/dev/stdout"
+    always_log_health_check_failures: true
+    timeout: 4s
+    interval: 10s
+    tls_options:
+      alpn_protocols: ["http/1.1"]
+    tcp_health_check: {}
+  #max_requests_per_connection: xxx
+  circuit_breakers:
+    thresholds:
+    - priority: DEFAULT
+      max_connections: 20000
+      max_pending_requests: 20000
+      max_requests: 20000
+      retry_budget:
+        budget_percent:
+          value: 25.0
+        min_retry_concurrency: 10
+    - priority: HIGH
+      max_connections: 20000
+      max_pending_requests: 20000
+      max_requests: 20000
+      retry_budget:
+        budget_percent:
+          value: 25.0
+        min_retry_concurrency: 10
+  # typed_extension_protocol_options:
+  #   envoy.extensions.upstreams.http.v3.HttpProtocolOptions:
+  #     "@type": type.googleapis.com/envoy.extensions.upstreams.http.v3.HttpProtocolOptions
+  #     upstream_http_protocol_options:
+  #     common_http_protocol_options:
+  #       idle_timeout: 55s
+  #       max_headers_count: 170
+  #       headers_with_underscores_action: ALLOW
+  dns_refresh_rate: 15s
+  dns_failure_refresh_rate:
+    base_interval: 1s
+    max_interval: 10s
+  respect_dns_ttl: true
+  dns_lookup_family: V4_ONLY
+  # use_tcp_for_dns_lookups: true
+  outlier_detection:
+    interval: 10s
+    base_ejection_time: 30s
+    max_ejection_percent: 10
+    max_ejection_time_jitter: 3s
+    split_external_local_origin_errors: true
+    consecutive_gateway_failure: 5
+    consecutive_local_origin_failure: 5
+  track_cluster_stats:
+    timeout_budgets: true
+    request_response_sizes: true
+  common_lb_config:
+    healthy_panic_threshold:
+      value: 75.0
+    ignore_new_hosts_until_first_hc: true
+  upstream_connection_options:
+    tcp_keepalive:
+      keepalive_probes: 5
+      keepalive_interval: 5
+      keepalive_time: 300
+  ignore_health_on_host_removal: true

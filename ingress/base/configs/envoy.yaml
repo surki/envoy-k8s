@@ -1,0 +1,77 @@
+admin:
+  access_log:
+    name: envoy.access_loggers.file
+    typed_config:
+      "@type": type.googleapis.com/envoy.extensions.access_loggers.file.v3.FileAccessLog
+      path: "/tmp/admin_access.log"
+  address:
+    socket_address:
+      protocol: TCP
+      address: 0.0.0.0
+      port_value: 9901
+
+layered_runtime:
+  layers:
+    - name: static_layer_0
+      static_layer:
+        re2.max_program_size.error_level: 120
+        # envoy:
+        #   resource_limits:
+        #     listener:
+        overload:
+          global_downstream_max_connections: 60000
+
+# overload_manager:
+#   refresh_interval: 5s
+#   resource_monitors:
+#     - name: "envoy.resource_monitors.fixed_heap"
+#       typed_config:
+#         "@type": type.googleapis.com/envoy.extensions.resource_monitors.fixed_heap.v3.FixedHeapConfig
+#         max_heap_size_bytes:
+#   actions:
+#     - name: "envoy.overload_actions.shrink_heap"
+#       triggers:
+#       - name: "envoy.resource_monitors.fixed_heap"
+#         threshold:
+#           value: 0.80
+#     - name: "envoy.overload_actions.disable_http_keepalive"
+#       triggers:
+#         - name: "envoy.resource_monitors.fixed_heap"
+#           threshold:
+#             value: 0.95
+
+cluster_manager:
+  outlier_detection:
+    event_log_path: "/dev/stdout"
+
+stats_config:
+  use_all_default_tags: true
+  histogram_bucket_settings:
+  - match:
+      safe_regex:
+        regex: "^.*_size$"
+    buckets: [1, 64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384, 32768, 65536, 131072, 262144, 524288, 1048576, 2097152, 4194304, 8388608, 16777216, 33554432, 134217728, 268435456, 536870912, 1073741824]
+  - match:
+      safe_regex:
+        regex: "^.*$"
+    buckets: [0.5, 1, 5, 10, 25, 50, 100, 200, 300, 500, 1000, 2500, 5000, 10000, 30000, 60000]
+  # stats_matcher:
+  #   exclusion_list:
+  #     patterns:
+  #     - safe_regex:
+  #         regex: xxx
+
+
+dynamic_resources:
+  lds_config:
+    resource_api_version: V3
+    path_config_source:
+      path: "/etc/envoy/xds/lds.yaml"
+      watched_directory:
+        path: "/etc/envoy/xds"
+  cds_config:
+    resource_api_version: V3
+    path_config_source:
+      path: "/etc/envoy/xds/cds.yaml"
+      watched_directory:
+        path: "/etc/envoy/xds"

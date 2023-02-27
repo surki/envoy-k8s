@@ -1,0 +1,4 @@
+commonLabels:
+- path: spec/template/spec/topologySpreadConstraints/labelSelector/matchLabels
+  create: false
+  kind: Deployment

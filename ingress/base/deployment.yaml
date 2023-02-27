@@ -1,0 +1,175 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: envoy
+  name: envoy
+spec:
+  minReadySeconds: 10
+  progressDeadlineSeconds: 600
+  revisionHistoryLimit: 10
+  selector:
+    matchLabels:
+      app: envoy
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 10%
+      maxSurge: 50%
+  template:
+    metadata:
+      labels:
+        app: envoy
+      annotations:
+        prometheus.io/scrape: 'true'
+        prometheus.io/path: '/stats/prometheus'
+        prometheus.io/port: '9901'
+    spec:
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: topology.kubernetes.io/zone
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              app: envoy
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              app: envoy
+      automountServiceAccountToken: false
+      securityContext:
+        runAsUser: 65534
+        runAsGroup: 65534
+        sysctls:
+        # - name: net.core.somaxconn
+        #   value: "32000"
+        - name: net.ipv4.ip_local_port_range
+          value: "2000 64000"
+      containers:
+      - image: envoyproxy/envoy:v1.25.1
+        imagePullPolicy: IfNotPresent
+        command:
+        - /usr/local/bin/envoy
+        - --config-path
+        - /etc/envoy/envoy.yaml
+        - --service-node
+        - $(POD_NAME)
+        - --service-cluster
+        - envoy-ingress
+        - --log-level
+        - info
+        workingDir: /etc/envoy
+        name: envoy
+        securityContext:
+          readOnlyRootFilesystem: true
+          runAsNonRoot: true
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop: ["all"]
+        ports:
+        - containerPort: 8000
+        - containerPort: 9901
+          name: metrics
+        resources:
+          requests:
+            cpu: "0.1"
+            memory: "100Mi"
+            ephemeral-storage: "100Mi"
+          limits:
+            memory: "1Gi"
+        env:
+        - name: NODE_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: spec.nodeName
+        - name: NODE_IP
+          valueFrom:
+            fieldRef:
+              fieldPath: status.hostIP
+        - name: POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        startupProbe:
+          failureThreshold: 10
+          periodSeconds: 10
+          httpGet:
+            path: /health/ready
+            port: 8080
+        readinessProbe:
+          failureThreshold: 5
+          httpGet:
+            path: /health/ready
+            port: 8080
+          timeoutSeconds: 10
+          periodSeconds: 30
+        livenessProbe:
+          failureThreshold: 5
+          httpGet:
+            path: /health/live
+            port: 8080
+          timeoutSeconds: 10
+          periodSeconds: 30
+        lifecycle:
+          preStop:
+            exec:
+              command: ["/usr/bin/sleep", "240s"]
+        volumeMounts:
+        - name: envoy-cfg
+          mountPath: /etc/envoy
+        - name: envoy-cfg-xds
+          mountPath: /etc/envoy/xds
+        - name: tmp
+          mountPath: /tmp
+      # - image: node-exporter
+      #   name: node-exporter
+      #   args:
+      #   - --web.listen-address=0.0.0.0:9100
+      #   - --collector.disable-defaults
+      #   - --web.disable-exporter-metrics
+      #   - --collector.conntrack
+      #   - --collector.filefd
+      #   - --collector.netstat
+      #   - --collector.sockstat
+      #   ports:
+      #   - name: metrics-1
+      #     containerPort: 9100
+      #   resources:
+      #     limits:
+      #       cpu: 250m
+      #       memory: 180Mi
+      #     requests:
+      #       cpu: 10m
+      #       memory: 10Mi
+      #   securityContext:
+      #     readOnlyRootFilesystem: true
+      #     runAsNonRoot: true
+      #     allowPrivilegeEscalation: false
+      #     capabilities:
+      #       drop: ["all"]
+      dnsPolicy: ClusterFirst
+      dnsConfig:
+        options:
+          - name: ndots
+            value: "1"
+          - name: timeout
+            value: "2"
+          - name: attempts
+            value: "5"
+          - name: single-request-reopen
+      restartPolicy: Always
+      terminationGracePeriodSeconds: 300
+      volumes:
+      - name: tmp
+        emptyDir: {}
+      - name: envoy-cfg
+        configMap:
+          name: envoy-cfg
+          items:
+          - key: envoy.yaml
+            path: envoy.yaml
+      - name: envoy-cfg-xds
+        configMap:
+          name: envoy-cfg-xds

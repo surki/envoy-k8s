@@ -1,0 +1,98 @@
+version_info: "0"
+resources:
+- "@type": type.googleapis.com/envoy.config.route.v3.RouteConfiguration
+  name: route_8080
+  validate_clusters: false
+  internal_only_headers:
+  - x-request-id
+  - x-forwarded-host
+  - x-forwarded-prefix
+  request_headers_to_add:
+  request_headers_to_remove:
+  response_headers_to_add:
+  - header:
+      key: "x-trace-id"
+      value: "%REQ(TRACEPARENT)%"
+  # - header:
+  #     key: "NEL"
+  #     value: '{ "report_to": "nel-endpoint", "max_age": 2592000, "include_subdomains": true}'
+  # - header:
+  #     key: "Report-To"
+  #     value: '{ "group": "nel-endpoint", "max_age": 2592000, "include_subdomains": true, "endpoints": [{"url": "https://xxx.xxx/nelreports"}]}'
+  response_headers_to_remove:
+  # - x-envoy-upstream-service-time
+  ignore_port_in_host_matching: true
+  virtual_hosts:
+  - name: amazonaws
+    domains:
+      - "*amazonaws.com"
+      - "amazonaws.com"
+    routes:
+    - match:
+        prefix: "/"
+      direct_response:
+        status: 403
+  - name: backend
+    domains:
+    - "*"
+    rate_limits:
+      stage: 0
+      actions:
+        - request_headers: { header_name: :authority, descriptor_key: hostname, skip_if_absent: false }
+        - request_headers: { header_name: :method, descriptor_key: method, skip_if_absent: false }
+        - request_headers: { header_name: :path, descriptor_key: pathname, skip_if_absent: false }
+        - request_headers: { header_name: x-forwarded-for, descriptor_key: ip, skip_if_absent: false }
+        - request_headers: { header_name: x-request-id, descriptor_key: requestid, skip_if_absent: false }
+    routes:
+    - match:
+        path: "/health/live"
+      direct_response:
+        status: 200
+      typed_per_filter_config:
+        envoy.filters.http.ext_authz:
+          "@type": type.googleapis.com/envoy.extensions.filters.http.ext_authz.v3.ExtAuthzPerRoute
+          disabled: true
+        envoy.filters.http.lua:
+          "@type": type.googleapis.com/envoy.extensions.filters.http.lua.v3.LuaPerRoute
+          disabled: true
+    - match:
+        prefix: "/health/ready"
+      direct_response:
+        status: 200
+      typed_per_filter_config:
+        envoy.filters.http.ext_authz:
+          "@type": type.googleapis.com/envoy.extensions.filters.http.ext_authz.v3.ExtAuthzPerRoute
+          disabled: true
+        envoy.filters.http.lua:
+          "@type": type.googleapis.com/envoy.extensions.filters.http.lua.v3.LuaPerRoute
+          disabled: true
+    # - match:
+    #     prefix: "/.well-known/acme-challenge/"
+    #   route:
+    #     cluster: letsencrypt
+    #     timeout: 60s
+    #   typed_per_filter_config:
+    #     envoy.filters.http.ext_authz:
+    #       "@type": type.googleapis.com/envoy.extensions.filters.http.ext_authz.v3.ExtAuthzPerRoute
+    #       disabled: true
+    #     envoy.filters.http.lua:
+    #       "@type": type.googleapis.com/envoy.extensions.filters.http.lua.v3.LuaPerRoute
+    #       disabled: true
+    - match:
+        prefix: "/xxx"
+      route:
+        timeout: 60s
+        cluster: backend
+    - match:
+        prefix: "/"
+      direct_response:
+        status: 404
+    retry_policy:
+      retry_on: gateway-error,reset,connect-failure,refused-stream,cancelled,deadline-exceeded,resource-exhausted,unavailable
+      num_retries: 1
+      retry_host_predicate:
+      - name: envoy.retry_host_predicates.previous_hosts
+        typed_config:
+          "@type": type.googleapis.com/envoy.extensions.retry.host.previous_hosts.v3.PreviousHostsPredicate
+      host_selection_retry_max_attempts: 3
+    include_request_attempt_count: true

@@ -1,0 +1,25 @@
+namespace: envoy-ingress
+
+configurations:
+- scheduler.yaml
+
+resources:
+- deployment.yaml
+- service.yaml
+- pdb.yaml
+- hpa.yaml
+
+configMapGenerator:
+- files:
+  - configs/envoy.yaml
+  name: envoy-cfg
+- files:
+  - configs/xds/lds.yaml
+  - configs/xds/cds.yaml
+  - configs/xds/rds.yaml
+  name: envoy-cfg-xds
+  options:
+    disableNameSuffixHash: true
+
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
