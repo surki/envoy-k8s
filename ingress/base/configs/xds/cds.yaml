@@ -1,15 +1,221 @@
 version_info: "0"
 resources:
 - "@type": type.googleapis.com/envoy.config.cluster.v3.Cluster
-  name: dynamic_forward_proxy_cluster
-  lb_policy: CLUSTER_PROVIDED
-  cluster_type:
-    name: envoy.clusters.dynamic_forward_proxy
-    typed_config:
-      "@type": type.googleapis.com/envoy.extensions.clusters.dynamic_forward_proxy.v3.ClusterConfig
-      dns_cache_config:
-        name: dynamic_forward_proxy_cache_config
-        dns_lookup_family: V4_ONLY
+  name: httpbin.org
+  connect_timeout: 5s
+  type: strict_dns
+  lb_policy: round_robin
+  protocol_selection: USE_DOWNSTREAM_PROTOCOL
+  load_assignment:
+    cluster_name: httpbin.org
+    endpoints:
+    - lb_endpoints:
+      - endpoint:
+          address:
+            socket_address:
+              address: httpbin.org
+              port_value: 443
+  dns_refresh_rate: 15s
+  dns_failure_refresh_rate:
+    base_interval: 1s
+    max_interval: 10s
+  respect_dns_ttl: true
+  dns_lookup_family: V4_ONLY
+  # use_tcp_for_dns_lookups: true
+  outlier_detection:
+    interval: 10s
+    base_ejection_time: 30s
+    max_ejection_percent: 10
+    max_ejection_time_jitter: 3s
+    split_external_local_origin_errors: true
+    consecutive_gateway_failure: 5
+    consecutive_local_origin_failure: 5
+  track_cluster_stats:
+    timeout_budgets: true
+    request_response_sizes: true
+  common_lb_config:
+    healthy_panic_threshold:
+      value: 75.0
+    ignore_new_hosts_until_first_hc: true
+  upstream_connection_options:
+    tcp_keepalive:
+      keepalive_probes: 5
+      keepalive_interval: 5
+      keepalive_time: 300
+  ignore_health_on_host_removal: true
+  circuit_breakers:
+    thresholds:
+    - priority: DEFAULT
+      max_connections: 20000
+      max_pending_requests: 20000
+      max_requests: 20000
+      retry_budget:
+        budget_percent:
+          value: 25.0
+        min_retry_concurrency: 10
+
+- "@type": type.googleapis.com/envoy.config.cluster.v3.Cluster
+  name: google.com
+  connect_timeout: 5s
+  type: strict_dns
+  lb_policy: round_robin
+  protocol_selection: USE_DOWNSTREAM_PROTOCOL
+  load_assignment:
+    cluster_name: google.com
+    endpoints:
+    - lb_endpoints:
+      - endpoint:
+          address:
+            socket_address:
+              address: google.com
+              port_value: 443
+  dns_refresh_rate: 15s
+  dns_failure_refresh_rate:
+    base_interval: 1s
+    max_interval: 10s
+  respect_dns_ttl: true
+  dns_lookup_family: V4_ONLY
+  # use_tcp_for_dns_lookups: true
+  outlier_detection:
+    interval: 10s
+    base_ejection_time: 30s
+    max_ejection_percent: 10
+    max_ejection_time_jitter: 3s
+    split_external_local_origin_errors: true
+    consecutive_gateway_failure: 5
+    consecutive_local_origin_failure: 5
+  track_cluster_stats:
+    timeout_budgets: true
+    request_response_sizes: true
+  common_lb_config:
+    healthy_panic_threshold:
+      value: 75.0
+    ignore_new_hosts_until_first_hc: true
+  upstream_connection_options:
+    tcp_keepalive:
+      keepalive_probes: 5
+      keepalive_interval: 5
+      keepalive_time: 300
+  ignore_health_on_host_removal: true
+  circuit_breakers:
+    thresholds:
+    - priority: DEFAULT
+      max_connections: 20000
+      max_pending_requests: 20000
+      max_requests: 20000
+      retry_budget:
+        budget_percent:
+          value: 25.0
+        min_retry_concurrency: 10
+
+- "@type": type.googleapis.com/envoy.config.cluster.v3.Cluster
+  name: bing.com
+  connect_timeout: 5s
+  type: strict_dns
+  lb_policy: round_robin
+  protocol_selection: USE_DOWNSTREAM_PROTOCOL
+  load_assignment:
+    cluster_name: bing.com
+    endpoints:
+    - lb_endpoints:
+      - endpoint:
+          address:
+            socket_address:
+              address: bing.com
+              port_value: 443
+  dns_refresh_rate: 15s
+  dns_failure_refresh_rate:
+    base_interval: 1s
+    max_interval: 10s
+  respect_dns_ttl: true
+  dns_lookup_family: V4_ONLY
+  # use_tcp_for_dns_lookups: true
+  outlier_detection:
+    interval: 10s
+    base_ejection_time: 30s
+    max_ejection_percent: 10
+    max_ejection_time_jitter: 3s
+    split_external_local_origin_errors: true
+    consecutive_gateway_failure: 5
+    consecutive_local_origin_failure: 5
+  track_cluster_stats:
+    timeout_budgets: true
+    request_response_sizes: true
+  common_lb_config:
+    healthy_panic_threshold:
+      value: 75.0
+    ignore_new_hosts_until_first_hc: true
+  upstream_connection_options:
+    tcp_keepalive:
+      keepalive_probes: 5
+      keepalive_interval: 5
+      keepalive_time: 300
+  ignore_health_on_host_removal: true
+  circuit_breakers:
+    thresholds:
+    - priority: DEFAULT
+      max_connections: 20000
+      max_pending_requests: 20000
+      max_requests: 20000
+      retry_budget:
+        budget_percent:
+          value: 25.0
+        min_retry_concurrency: 10
+# Add cluster for yahoo.com
+- "@type": type.googleapis.com/envoy.config.cluster.v3.Cluster
+  name: yahoo.com
+  connect_timeout: 5s
+  type: strict_dns
+  lb_policy: round_robin
+  protocol_selection: USE_DOWNSTREAM_PROTOCOL
+  load_assignment:
+    cluster_name: yahoo.com
+    endpoints:
+    - lb_endpoints:
+      - endpoint:
+          address:
+            socket_address:
+              address: yahoo.com
+              port_value: 443
+  dns_refresh_rate: 15s
+  dns_failure_refresh_rate:
+    base_interval: 1s
+    max_interval: 10s
+  respect_dns_ttl: true
+  dns_lookup_family: V4_ONLY
+  # use_tcp_for_dns_lookups: true
+  outlier_detection:
+    interval: 10s
+    base_ejection_time: 30s
+    max_ejection_percent: 10
+    max_ejection_time_jitter: 3s
+    split_external_local_origin_errors: true
+    consecutive_gateway_failure: 5
+    consecutive_local_origin_failure: 5
+  track_cluster_stats:
+    timeout_budgets: true
+    request_response_sizes: true
+  common_lb_config:
+    healthy_panic_threshold:
+      value: 75.0
+    ignore_new_hosts_until_first_hc: true
+  upstream_connection_options:
+    tcp_keepalive:
+      keepalive_probes: 5
+      keepalive_interval: 5
+      keepalive_time: 300
+  ignore_health_on_host_removal: true
+  circuit_breakers:
+    thresholds:
+    - priority: DEFAULT
+      max_connections: 20000
+      max_pending_requests: 20000
+      max_requests: 20000
+      retry_budget:
+        budget_percent:
+          value: 25.0
+        min_retry_concurrency: 10
+        
 # - "@type": type.googleapis.com/envoy.config.cluster.v3.Cluster
 #   name: backend
 #   type: STRICT_DNS
